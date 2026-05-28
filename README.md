@@ -23,7 +23,7 @@ Task: generate concise abstractive summaries for long-form news articles.
 
 ## Why BART for Summarization?
 
-BART, or Bidirectional and Auto-Regressive Transformers, keeps the encoder-decoder Transformer backbone, but pretrains it as a denoising autoencoder.
+BART, or Bidirectional and Auto-Regressive Transformers, keeps the encoder-decoder Transformer backbone. The important difference is how BART is pre-trained. BART is pre-trained as a denoising autoencoder. This means that during pretraining, the model takes text that has been corrupted or noised, and it learns to reconstruct the original clean text.
 
 ![BART architecture](readme_assets/extracted/slide03_bart_architecture.png)
 
