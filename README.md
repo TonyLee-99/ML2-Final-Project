@@ -1,207 +1,217 @@
-# ML2 Final Project: CNN/DailyMail Summarization
+# ML2 Final Project: Abstractive News Summarization
 
-This repository contains a four-notebook final project on abstractive news summarization using CNN/DailyMail 3.0.0. The project fine-tunes `facebook/bart-base`, compares it with strong baselines, studies the effect of input truncation, and adds long-article plus qualitative factual consistency analysis.
+## Abstractive News Summarization with Transformer Models
 
-The repository is intentionally kept focused. It includes the executed notebooks, a dependency file, and project documentation. Large checkpoints, generated CSV/XLSX outputs, intermediate progress files, and presentation drafts are excluded because they are outputs of the notebooks rather than source material needed for review.
+**Presenters:** Yihong Li, Tony Li
 
-## Research Question
+## Problem & Dataset
 
-How well does a fine-tuned BART summarization model perform on CNN/DailyMail, and what happens when source articles exceed the model's 1024-token input limit?
+Task: generate concise abstractive summaries for long-form news articles.
 
-The final project answers this through four connected parts:
-
-1. fine-tune and evaluate BART-base on CNN/DailyMail,
-2. measure how often article truncation occurs,
-3. test long-article alternatives such as hierarchical summarization and LED,
-4. evaluate summary quality with both automatic metrics and a structured qualitative rubric.
-
-## Files
-
-| File | Role in the project |
+| Component | Description |
 | --- | --- |
-| `01_main_bart_cnn_dailymail_experiment.ipynb` | Main experiment: data loading, EDA, truncation analysis, BART-base fine-tuning, Lead-3 baseline, ROUGE/BERTScore evaluation, and length-group analysis. |
-| `02_hierarchical_long_context_experiments.ipynb` | Long-article extension: evaluates all test examples longer than 1024 BART tokens and compares Lead-3, 1024-token BART, hierarchical BART, LED, and BART-large-CNN. |
-| `03_factual_consistency_and_rubric.ipynb` | Qualitative evaluation: builds a fixed 30-article, 5-method review sample and applies a rubric for fluency, factual consistency, coverage, and conciseness. |
-| `04_recent_news_demo.ipynb` | Presentation demo: applies the fine-tuned model to a recent news article outside CNN/DailyMail. |
-| `requirements.txt` | Main Python packages used across the notebooks. |
+| Input dataset | CNN/DailyMail news article, long English text |
+| Model | Sequence-to-sequence Transformer summarizer |
+| Target | Human-written highlights used as reference summaries |
 
-## Notebook 01: Main BART Fine-Tuning Experiment
+| Dataset field | Role | Description |
+| --- | --- | --- |
+| `article` | Source input | Full news article to summarize |
+| `highlights` | Target output | Journalist-written bullet-style summary |
+| official splits | Evaluation structure | Train / validation / test from CNN/DailyMail |
 
-Notebook 01 is the core model experiment.
 
-It performs:
+## Why BART for Summarization?
 
-- CNN/DailyMail 3.0.0 loading and cleaning,
-- exploratory data analysis for article and summary length,
-- BART-token length analysis at 512 and 1024 tokens,
-- Lead-3 extractive baseline creation,
-- fine-tuning `facebook/bart-base`,
-- ROUGE and BERTScore evaluation on a held-out test subset,
-- article-length breakdown for short, medium, and long articles.
+BART, or Bidirectional and Auto-Regressive Transformers, keeps the encoder-decoder Transformer backbone, but pretrains it as a denoising autoencoder.
 
-Main configuration:
+![BART architecture](readme_assets/extracted/slide03_bart_architecture.png)
 
-| Setting | Value |
+![Transformer comparison](readme_assets/extracted/slide03_transformer_comparison.png)
+
+## Systems Compared
+
+We compare our fine-tuned abstractive model against a simple extractive baseline and a stronger reported reference.
+
+| System | Type | Role in project |
+| --- | --- | --- |
+| Lead-3 | Extractive baseline | Uses the first three article sentences; simple but strong for news. |
+| Fine-tuned `bart-base` | Our main model, about 140M parameters | BART-base trained by us on CNN/DailyMail subsets. |
+| `bart-large-cnn` | Reference only, about 406M parameters | Already fine-tuned on CNN/DailyMail, so not counted as our main training result. |
+
+Why Lead-3 matters: news often follows an inverted-pyramid structure, so the opening sentences can be surprisingly competitive.
+
+## Training Setup
+
+| Choice | Setting used in our experiments |
 | --- | --- |
-| Dataset | `cnn_dailymail`, version `3.0.0` |
 | Main model | `facebook/bart-base` |
-| Training subset | 50,000 examples |
-| Validation subset | 1,500 examples |
-| Test subset | 1,500 examples |
-| Max source length | 1024 BART tokens |
-| Max target length | 128 tokens |
-| Epochs | 2 |
+| Training sizes | 20k and 50k CNN/DailyMail training examples |
+| Sequence lengths | 1024 input tokens, 128 target tokens |
+| Hardware | Colab A100 GPU with BF16 mixed precision |
+| Optimization | 2 epochs, learning rate 3e-5, dynamic padding |
+| Automatic metrics | ROUGE-1 / ROUGE-2 / ROUGE-L / ROUGE-Lsum and BERTScore |
 
-Dataset sizes after cleaning:
+Implementation detail: dynamic padding avoids wasting memory on shorter articles, while 1024 input tokens uses the maximum standard BART context window.
 
-| Split | Examples |
-| --- | ---: |
-| Train | 287,111 |
-| Validation | 13,368 |
-| Test | 11,490 |
+## Evaluation Snapshot
 
-Main automatic metrics on the 1,500-example test subset:
+Fine-tuned BART-base improves over Lead-3; more training data gives a modest gain.
 
-| Model | ROUGE-1 | ROUGE-2 | ROUGE-L | ROUGE-Lsum | BERTScore F1 |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Lead-3 extractive baseline | 40.1828 | 17.5035 | 24.9322 | 36.4560 | 24.3850 |
-| Fine-tuned `facebook/bart-base` | 41.3973 | 18.7031 | 28.0295 | 38.3034 | 32.1985 |
-| `facebook/bart-large-cnn` reported reference | 42.9490 | 20.8150 | 30.6190 | 40.0380 | N/A |
+![Evaluation bars](readme_assets/extracted/slide06_evaluation_bars.png)
 
-Takeaway: fine-tuned BART-base improves over Lead-3 on ROUGE and BERTScore, while BART-large-CNN remains a stronger external reference point.
-
-## Truncation Findings
-
-The project emphasizes truncation because CNN/DailyMail articles are often longer than common transformer input limits.
-
-| Input limit | Training articles truncated | Average tokens lost when truncated | Median tokens lost |
-| ---: | ---: | ---: | ---: |
-| 512 tokens | 79.54% | 483.56 | 391 |
-| 1024 tokens | 30.04% | 369.61 | 280 |
-
-Article token groups in the cleaned training split:
-
-| Length group | Examples | Share |
+| System | ROUGE-Lsum | BERTScore F1 |
 | --- | ---: | ---: |
-| `<=512` tokens | 58,740 | 20.46% |
-| `513-1024` tokens | 142,136 | 49.51% |
-| `>1024` tokens | 86,235 | 30.04% |
+| Lead-3 baseline | 36.46 | 24.39 |
+| BART-base 20k | 38.07 | 31.67 |
+| BART-base 50k | 38.36 | 32.10 |
+| BART-large-CNN reference | 40.04 | Not reported |
 
-This means a 1024-token model is much better than a 512-token model, but it still loses source context for about 30% of training articles.
+BART-base beats the Lead-3 baseline on both metrics. The 50k training run is also slightly better than the 20k run, so more training data helps, but the improvement is modest. The BART-large-CNN reference is still stronger on ROUGE-Lsum. This is expected because it is a larger model and already fine-tuned on CNN/DailyMail.
 
-## Length-Group Results
+## Key Takeaways
 
-Notebook 01 also compares performance by article length.
+| Takeaway | Explanation |
+| --- | --- |
+| Fine-tuning works | BART-base beats the Lead-3 extractive baseline on both ROUGE and BERTScore. |
+| More data helps, but modestly | The 50k run improves over the 20k run, but gains are not dramatic. |
+| Reference model remains stronger | BART-large-CNN is larger and already trained on CNN/DailyMail, so this gap is expected. |
+| Next question | How much do context limits and long-article truncation affect summary quality? |
 
-| Model | Length group | ROUGE-1 | ROUGE-2 | ROUGE-Lsum |
-| --- | --- | ---: | ---: | ---: |
-| Lead-3 | `<=512 tokens` | 43.3070 | 21.3213 | 39.7190 |
-| Fine-tuned BART-base | `<=512 tokens` | 43.8763 | 22.0443 | 41.1344 |
-| Lead-3 | `513-1024 tokens` | 40.4707 | 17.4849 | 36.5670 |
-| Fine-tuned BART-base | `513-1024 tokens` | 41.6884 | 18.6596 | 38.3721 |
-| Lead-3 | `>1024 tokens` | 37.0630 | 14.1811 | 33.4335 |
-| Fine-tuned BART-base | `>1024 tokens` | 38.8189 | 15.8185 | 35.7281 |
+## Truncation Problem
 
-Takeaway: performance decreases as articles get longer, but fine-tuned BART-base remains stronger than Lead-3 in all length groups.
+![Truncation chart](readme_assets/extracted/slide08_truncation_chart.png)
 
-## Notebook 02: Long-Article Extension
+| Threshold | Result |
+| --- | --- |
+| 512 BART tokens | 79.54% of cleaned train articles exceed this length |
+| 1024 BART tokens | 30.04% of cleaned train articles exceed this length |
 
-Notebook 02 focuses only on test examples longer than 1024 BART tokens. In the 1,500-example test subset, there are 440 such long examples.
+| Split | <=512 | 513-1024 | >1024 |
+| --- | ---: | ---: | ---: |
+| Train | 20.46% | 49.51% | 30.04% |
+| Validation | 24.24% | 46.99% | 28.77% |
+| Test | 23.74% | 47.04% | 29.22% |
 
-Methods compared on the same 440 long articles:
+## Article Length vs. Summary Quality
 
-- Lead-3 baseline,
-- fine-tuned BART-base with 1024-token truncation,
-- hierarchical BART, where article chunks are summarized and then summarized again,
-- fine-tuned LED-base-16384 CNN/DailyMail model,
-- BART-large-CNN reference model.
+Summary quality decreases as article length increases, which suggests that long inputs are harder for the model. However, this pattern alone does not prove that truncation is the direct cause.
 
-Long-article automatic metrics:
+![Article length vs summary quality](readme_assets/extracted/slide09_length_quality_chart.png)
 
-| Method | ROUGE-1 | ROUGE-2 | ROUGE-Lsum | BERTScore F1 | Examples |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Lead-3 baseline | 37.0630 | 14.1811 | 33.4335 | 19.3308 | 440 |
-| Fine-tuned BART-base, 1024-token truncation | 38.8189 | 15.8185 | 35.7281 | 27.4355 | 440 |
-| Hierarchical fine-tuned BART | 36.6385 | 14.0029 | 33.5842 | 24.8547 | 440 |
-| Fine-tuned LED-base-16384 CNN/DM | 32.7555 | 10.9999 | 30.1644 | 16.4420 | 440 |
-| BART-large-CNN reference | 41.6900 | 18.1841 | 38.6494 | 26.2091 | 440 |
+| Article-length group | Fine-tuned BART-base ROUGE-Lsum | Lead-3 baseline ROUGE-Lsum |
+| --- | ---: | ---: |
+| <=512 | 41.13 | 39.72 |
+| 513-1024 | 38.37 | 36.57 |
+| >1024 | 35.73 | 33.43 |
 
-Notebook 02 also adds a lexical reference-coverage analysis. On the 440 long examples, about 79.63% of reference terms appear within the first 1024 tokens on average, while about 4.06% are tail-only terms. This suggests that truncation can remove relevant evidence, but the beginning of the article still contains much of the reference information for many CNN/DailyMail examples.
+Both models show lower scores as articles move from short to long groups. However, longer articles may also be more complex, so we need further analysis to separate input length from true truncation effects.
 
-Takeaway: for this dataset and setup, the fine-tuned 1024-token BART-base model remains competitive on long articles. The hierarchical and LED alternatives do not automatically improve results, while BART-large-CNN is the strongest reference model.
+## News Lead Bias
 
-## Notebook 03: Factual Consistency and Qualitative Rubric
+CNN articles often follow an inverted-pyramid structure, where the main event and key facts appear near the beginning. The first 1024 tokens may already contain much of the information needed for a reference-style summary.
 
-Notebook 03 adds structured qualitative evaluation because ROUGE and BERTScore do not fully measure factual correctness or usefulness.
+![Inverted-pyramid news structure](readme_assets/extracted/slide10_inverted_pyramid.png)
 
-The notebook creates a fixed review set:
+| Inverted-pyramid layer |
+| --- |
+| Main event and key facts |
+| Supporting details |
+| Quotes and examples |
+| Background context |
 
-| Item | Value |
+## Reference Coverage
+
+Most reference-summary content is already covered by the first 1024 tokens, while the article tail adds limited unique information.
+
+![Reference coverage pipeline](readme_assets/extracted/slide11_reference_coverage_pipeline.png)
+
+Reference highlights are processed by extracting terms, phrases, and entity-like phrases, then searching the first 1024 tokens versus tail-only text.
+
+| Coverage measure | Mean | Median |
+| --- | ---: | ---: |
+| Prefix term coverage | 79.63% | 81.74% |
+| Tail-only terms | 4.06% | 0.00% |
+| Prefix entity coverage | 87.12% | 91.49% |
+| Tail-only entities | 2.27% | 0.00% |
+
+Prefix coverage is high for both terms and entity-like phrases. Tail-only reference information is low, especially for entities.
+
+## Long-Context Experiment Design
+
+![Long-context experiment design](readme_assets/extracted/slide12_experiment_design_table.png)
+
+Hierarchical BART splits the long article into chunks, summarizes each chunk, and then combines the chunk summaries into one final summary.
+
+Fine-tuned LED uses a long-context encoder-decoder model that can directly process longer inputs than BART, up to 4096 tokens in our experiment.
+
+| Method | Design |
+| --- | --- |
+| Truncated BART | first 1024 tokens -> summary |
+| Hierarchical BART | chunks -> chunk summaries -> final summary |
+| Fine-tuned LED | long-context encoder-decoder, up to 4096 tokens |
+| BART-large-CNN | strong CNN/DailyMail reference model |
+
+## Main Finding
+
+Longer context did not improve performance, which suggests that most useful information was already in the prefix.
+
+Long-context methods introduced extra weaknesses: Hierarchical BART may lose details during compression, while LED may not use the extra context effectively.
+
+![Main finding bars](readme_assets/extracted/slide13_main_finding_bars.png)
+
+| Method | Score |
 | --- | ---: |
-| Articles sampled | 30 |
-| Methods per article | 5 |
-| Total outputs reviewed | 150 |
+| BART-large-CNN reference | 38.65 |
+| Fine-tuned BART-base, 1024-token truncation | 35.73 |
+| Hierarchical fine-tuned BART | 33.58 |
+| Lead-3 baseline | 33.43 |
+| Fine-tuned LED-base-16384 CNN/DM | 30.16 |
 
-Rubric dimensions:
+## Qualitative Evaluation
 
-- fluency,
-- factual consistency,
-- coverage,
-- conciseness,
-- primary error type.
-
-The notebook includes both a human-review workbook workflow and an LLM-as-a-judge scoring section. The LLM judging is used as a structured qualitative aid, not as a replacement for human review.
-
-LLM-judge summary from Notebook 03:
-
-| Model | Fluency | Factual consistency | Coverage | Conciseness | Overall mean |
+| Method | Fluency | Factual | Coverage | Concise | Overall |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| BART-large-CNN reference | 4.867 | 4.967 | 3.567 | 3.933 | 4.334 |
-| Lead-3 | 4.800 | 5.000 | 2.500 | 3.400 | 3.925 |
-| Fine-tuned BART-base, 1024-token truncation | 4.367 | 4.767 | 2.800 | 3.367 | 3.825 |
-| Hierarchical BART | 4.267 | 4.633 | 2.500 | 3.600 | 3.750 |
-| Fine-tuned LED-base-16384 CNN/DM | 3.200 | 3.800 | 2.267 | 3.033 | 3.075 |
+| BART-large-CNN | 4.87 | 4.97 | 3.57 | 3.93 | 4.33 |
+| Lead-3 | 4.80 | 5.00 | 2.50 | 3.40 | 3.93 |
+| Fine-tuned BART | 4.37 | 4.77 | 2.80 | 3.37 | 3.83 |
+| Hierarchical BART | 4.27 | 4.63 | 2.50 | 3.60 | 3.75 |
+| LED | 3.20 | 3.80 | 2.27 | 3.03 | 3.08 |
 
-Takeaway: BART-large-CNN has the strongest qualitative average. Lead-3 is very factually safe but has weaker coverage. Fine-tuned BART-base improves coverage over Lead-3 but can still miss information or compress too aggressively.
+| Method-level error pattern | Description |
+| --- | --- |
+| Lead-3 | Very factually safe because it copies the opening, but it often misses reference-relevant details later in the article. |
+| Fine-tuned BART | Improves coverage over Lead-3, but still loses points for omissions and occasional unsupported or verbose details. |
+| Hierarchical BART | Accesses more text, yet chunk-level compression does not translate into better coverage or overall quality. |
+| LED | Longer input access is not enough here; lower factual and fluency scores suggest style mismatch and more unstable generation. |
 
-## Notebook 04: Recent News Demo
+## Real-News Demo
 
-Notebook 04 demonstrates how the fine-tuned model can be applied to a new article outside CNN/DailyMail.
+![Real-news source](readme_assets/extracted/slide15_real_news_source.png)
 
-This notebook is for presentation use:
+Generated summary:
 
-- the user pastes a recent article,
-- the fine-tuned BART-base checkpoint generates a 3-4 sentence summary,
-- no ROUGE or BERTScore is computed because there is no human reference summary,
-- the output is judged qualitatively for readability, factual consistency, and coverage.
+> SpaceX's regulatory filing revealed a financially smart link between its launch-services division and profitable Starlink satellite internet operation. Its AI business looks shakier than its rockets. Revenue in the AI division has mostly come from X, which is not a pure-play AI venture.
 
-## Main Conclusions
+## Notebook Workflow
 
-1. Fine-tuned BART-base performs better than the Lead-3 baseline on the main CNN/DailyMail test subset.
-2. Input truncation is a real issue: 30.04% of cleaned training articles exceed 1024 BART tokens.
-3. Longer articles are harder for both extractive and abstractive methods.
-4. Hierarchical summarization and LED are reasonable extensions, but they did not outperform the fine-tuned 1024-token BART-base setup in this experiment.
-5. Automatic metrics are useful but incomplete, so the project adds a structured qualitative evaluation for factual consistency and coverage.
+The notebooks are organized in the same order as the project logic:
 
-## Reproducibility Notes
+| Notebook | Purpose |
+| --- | --- |
+| `01_main_bart_cnn_dailymail_experiment.ipynb` | Main BART fine-tuning, Lead-3 baseline, truncation analysis, and automatic evaluation. |
+| `02_hierarchical_long_context_experiments.ipynb` | Long-article experiments and reference-coverage analysis. |
+| `03_factual_consistency_and_rubric.ipynb` | Structured qualitative and factual-consistency evaluation. |
+| `04_recent_news_demo.ipynb` | Recent-news demonstration using the fine-tuned model. |
 
-The notebooks were designed primarily for Google Colab with GPU acceleration and Google Drive storage. A full rerun can be expensive because it includes model fine-tuning, long-article generation, BERTScore evaluation, and qualitative scoring.
-
-For review, re-running is not required. The notebooks already include executed outputs and show the full workflow.
-
-If reproducing from scratch:
-
-1. run Notebook 01 first to create the fine-tuned checkpoint and prediction files,
-2. run Notebook 02 to generate long-article comparison outputs,
-3. run Notebook 03 to build and score the qualitative review sample,
-4. run Notebook 04 only for the optional presentation demo.
+The notebooks already include executed outputs, so re-running the full workflow is not required for review. A full rerun is expensive because it includes model fine-tuning, long-article generation, BERTScore evaluation, and qualitative scoring.
 
 ## Setup
 
-Install the main Python dependencies:
+Install the main dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Some cells assume Colab paths such as `/content/drive/MyDrive/...`. If running locally, update the storage paths and reduce batch sizes if GPU memory is limited.
+Some cells assume Google Colab paths such as `/content/drive/MyDrive/...`. If running locally, update the storage paths and reduce batch sizes if GPU memory is limited.
