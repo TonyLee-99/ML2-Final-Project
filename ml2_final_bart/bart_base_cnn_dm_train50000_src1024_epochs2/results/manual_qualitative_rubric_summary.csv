@@ -1,8 +1,0 @@
-,fluency_1to5,fluency_1to5,factual_consistency_1to5,factual_consistency_1to5,coverage_1to5,coverage_1to5,conciseness_1to5,conciseness_1to5
-,mean,count,mean,count,mean,count,mean,count
-model,,,,,,,,
-BART-large-CNN reference,,0,,0,,0,,0
-"Fine-tuned BART-base, 1024-token truncation",,0,,0,,0,,0
-Fine-tuned LED-base-16384 CNN/DM,,0,,0,,0,,0
-Hierarchical BART,,0,,0,,0,,0
-Lead-3,,0,,0,,0,,0

@@ -1,4 +1,0 @@
-model,rouge1,rouge2,rougeL,rougeLsum,bertscore_f1,num_examples
-Lead-3 extractive baseline,40.1828,17.5035,24.9322,36.456,24.385,1500
-Fine-tuned facebook/bart-base,41.3973,18.7031,28.0295,38.3034,32.1985,1500
-facebook/bart-large-cnn reported reference,42.949,20.815,30.619,40.038,,HF model card self-reported

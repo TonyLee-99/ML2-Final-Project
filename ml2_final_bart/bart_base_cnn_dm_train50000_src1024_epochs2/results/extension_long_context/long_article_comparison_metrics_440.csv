@@ -1,6 +1,0 @@
-method,notes,rouge1,rouge2,rougeL,rougeLsum,bertscore_f1,num_examples
-Lead-3 baseline,Extractive baseline; first three sentences,37.063,14.1811,21.9925,33.4335,19.3308,440
-"Fine-tuned BART-base, 1024-token truncation",Main model from original notebook,38.8189,15.8185,25.167,35.7281,27.4355,440
-Hierarchical fine-tuned BART,"Chunk long article, summarize chunks, summarize combined chunk summaries",36.6385,14.0029,23.6335,33.5842,24.8547,440
-Fine-tuned LED-base-16384 CNN/DM,Long-context LED model fine-tuned on CNN/DailyMail; stronger and fairer than raw LED for this task.,32.7555,10.9999,21.2256,30.1644,16.442,440
-BART-large-CNN reference,Stronger CNN/DM model; not long-context,41.69,18.1841,28.0201,38.6494,26.2091,440

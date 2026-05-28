@@ -1,3 +1,0 @@
-threshold_tokens,num_examples,num_truncated,pct_truncated,avg_tokens_lost_when_truncated,median_tokens_lost_when_truncated
-512,287111,228371,79.5410137542623,483.5576320986465,391.0
-1024,287111,86235,30.03542184033353,369.60592566823215,280.0
