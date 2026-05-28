@@ -1,0 +1,13 @@
+datasets
+evaluate
+matplotlib
+nltk
+numpy
+openai
+openpyxl
+pandas
+rouge-score
+seaborn
+torch
+tqdm
+transformers

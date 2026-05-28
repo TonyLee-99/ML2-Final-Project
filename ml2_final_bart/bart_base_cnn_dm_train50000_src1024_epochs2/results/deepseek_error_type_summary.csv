@@ -1,0 +1,24 @@
+model,primary_error_type,count
+BART-large-CNN reference,omission,14
+BART-large-CNN reference,none,12
+BART-large-CNN reference,too_verbose,3
+BART-large-CNN reference,entity_error,1
+"Fine-tuned BART-base, 1024-token truncation",omission,18
+"Fine-tuned BART-base, 1024-token truncation",too_verbose,8
+"Fine-tuned BART-base, 1024-token truncation",hallucination,2
+"Fine-tuned BART-base, 1024-token truncation",entity_error,1
+"Fine-tuned BART-base, 1024-token truncation",none,1
+Fine-tuned LED-base-16384 CNN/DM,hallucination,9
+Fine-tuned LED-base-16384 CNN/DM,omission,9
+Fine-tuned LED-base-16384 CNN/DM,too_verbose,5
+Fine-tuned LED-base-16384 CNN/DM,entity_error,3
+Fine-tuned LED-base-16384 CNN/DM,unclear,3
+Fine-tuned LED-base-16384 CNN/DM,none,1
+Hierarchical BART,omission,19
+Hierarchical BART,too_verbose,4
+Hierarchical BART,hallucination,3
+Hierarchical BART,unclear,3
+Hierarchical BART,none,1
+Lead-3,omission,24
+Lead-3,too_verbose,5
+Lead-3,none,1

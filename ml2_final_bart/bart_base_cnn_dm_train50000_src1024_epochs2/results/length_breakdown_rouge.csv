@@ -1,0 +1,7 @@
+model,length_group,num_examples,avg_article_tokens,rouge1,rouge2,rougeL,rougeLsum
+Lead-3 extractive baseline,<=512 tokens,376,387.992,43.307,21.3213,28.3843,39.719
+Lead-3 extractive baseline,513-1024 tokens,684,749.1784,40.4707,17.4849,24.9059,36.567
+Lead-3 extractive baseline,>1024 tokens,440,1416.4114,37.063,14.1811,21.9925,33.4335
+Fine-tuned facebook/bart-base,<=512 tokens,376,387.992,43.8763,22.0443,31.0947,41.1344
+Fine-tuned facebook/bart-base,513-1024 tokens,684,749.1784,41.6884,18.6596,28.1838,38.3721
+Fine-tuned facebook/bart-base,>1024 tokens,440,1416.4114,38.8189,15.8185,25.167,35.7281

@@ -1,0 +1,113 @@
+# ML2 Final Project: CNN/DailyMail Summarization
+
+This repository contains a four-notebook final project for evaluating abstractive news summarization on CNN/DailyMail 3.0.0. The project starts from a fine-tuned `facebook/bart-base` model, compares it with a Lead-3 extractive baseline, and then extends the analysis to long-article handling and structured factual consistency review.
+
+## Research Question
+
+How well does a fine-tuned BART summarization model perform on CNN/DailyMail articles, and how much does the 1024-token input limit affect summary quality for longer news articles?
+
+The project focuses on three practical questions:
+
+- whether fine-tuned BART-base improves over a strong Lead-3 baseline,
+- how frequently CNN/DailyMail articles are truncated at 512 and 1024 tokens,
+- whether long-context or hierarchical summarization methods improve performance on articles longer than 1024 tokens.
+
+## Repository Structure
+
+| File or folder | Purpose |
+| --- | --- |
+| `01_main_bart_cnn_dailymail_experiment.ipynb` | Main experiment: dataset loading, truncation analysis, BART-base fine-tuning, Lead-3 baseline, ROUGE and BERTScore evaluation. |
+| `02_hierarchical_long_context_experiments.ipynb` | Long-article extension: compares 1024-token BART, hierarchical BART, LED, Lead-3, and BART-large-CNN reference outputs. |
+| `03_factual_consistency_and_rubric.ipynb` | Structured qualitative evaluation workflow for factual consistency, coverage, fluency, and conciseness. |
+| `04_recent_news_demo.ipynb` | Presentation demo showing how the fine-tuned model can summarize a new article outside CNN/DailyMail. |
+| `ml2_final_bart/.../results/` | Saved metrics, prediction samples, qualitative evaluation files, and long-context result summaries. |
+| `structured_qualitative_rubric_guide.md` | Human-evaluation rubric used for qualitative review. |
+| `factual_consistency_chatgpt_prompts_30.md` | Prompt set prepared for factual consistency review. |
+
+Large model checkpoints and intermediate progress files are intentionally excluded from GitHub. They are reproducible from the notebooks but are too large for a normal course-project repository.
+
+## Notebook Workflow
+
+Run the notebooks in order:
+
+1. `01_main_bart_cnn_dailymail_experiment.ipynb`
+2. `02_hierarchical_long_context_experiments.ipynb`
+3. `03_factual_consistency_and_rubric.ipynb`
+4. `04_recent_news_demo.ipynb`
+
+The notebooks in this repository already include executed outputs and saved result files. Re-running the full training workflow is not required just to review the project.
+
+## Main Configuration
+
+| Setting | Value |
+| --- | --- |
+| Dataset | `cnn_dailymail`, version `3.0.0` |
+| Main model | `facebook/bart-base` |
+| Training subset | 50,000 examples |
+| Validation subset | 1,500 examples |
+| Test subset | 1,500 examples |
+| Max source length | 1024 tokens |
+| Max target length | 128 tokens |
+| Training epochs | 2 |
+
+## Key Results
+
+### Overall Automatic Metrics
+
+| Model | ROUGE-1 | ROUGE-2 | ROUGE-L | ROUGE-Lsum | BERTScore F1 | Examples |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Lead-3 extractive baseline | 40.1828 | 17.5035 | 24.9322 | 36.4560 | 24.3850 | 1,500 |
+| Fine-tuned `facebook/bart-base` | 41.3973 | 18.7031 | 28.0295 | 38.3034 | 32.1985 | 1,500 |
+| `facebook/bart-large-cnn` reported reference | 42.9490 | 20.8150 | 30.6190 | 40.0380 | N/A | HF model card |
+
+The fine-tuned BART-base model improves over Lead-3 on ROUGE and BERTScore, while the larger BART-large-CNN reference remains a useful upper benchmark.
+
+### Truncation Analysis
+
+| Input limit | Training articles truncated | Average tokens lost when truncated |
+| ---: | ---: | ---: |
+| 512 tokens | 79.54% | 483.56 |
+| 1024 tokens | 30.04% | 369.61 |
+
+This supports the main extension of the project: even with a 1024-token input window, a meaningful share of CNN/DailyMail articles still lose context.
+
+### Article-Length Breakdown
+
+| Model | Length group | ROUGE-1 | ROUGE-2 | ROUGE-Lsum |
+| --- | --- | ---: | ---: | ---: |
+| Lead-3 | `<=512 tokens` | 43.3070 | 21.3213 | 39.7190 |
+| Fine-tuned BART-base | `<=512 tokens` | 43.8763 | 22.0443 | 41.1344 |
+| Lead-3 | `513-1024 tokens` | 40.4707 | 17.4849 | 36.5670 |
+| Fine-tuned BART-base | `513-1024 tokens` | 41.6884 | 18.6596 | 38.3721 |
+| Lead-3 | `>1024 tokens` | 37.0630 | 14.1811 | 33.4335 |
+| Fine-tuned BART-base | `>1024 tokens` | 38.8189 | 15.8185 | 35.7281 |
+
+Performance drops as articles get longer, but fine-tuned BART-base remains ahead of Lead-3 across all length groups.
+
+## Qualitative Evaluation
+
+Notebook 03 creates a structured human-review workbook. The rubric scores each method on:
+
+- fluency,
+- factual consistency,
+- coverage,
+- conciseness,
+- overall quality.
+
+The qualitative review is designed to complement automatic metrics because ROUGE and BERTScore do not fully capture factual errors, missing context, or summary usefulness.
+
+## Reproducibility Notes
+
+The original full training run was designed for Google Colab with GPU acceleration. A full rerun can take substantial time because it includes model fine-tuning, generation, long-article experiments, and qualitative workbook creation.
+
+For review purposes, start with the executed notebooks and the saved CSV/XLSX/Markdown outputs in `ml2_final_bart/bart_base_cnn_dm_train50000_src1024_epochs2/results/`.
+
+## Setup
+
+Install the main Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Some notebook cells assume Google Colab or GPU availability. If running locally, adjust the storage paths and batch sizes as needed.
